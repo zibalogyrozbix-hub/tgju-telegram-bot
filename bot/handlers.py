@@ -42,7 +42,7 @@ def _handle_message(message: dict):
     text = (message.get("text") or "").strip()
 
     if text in ("/start", "/help"):
-        tg.send_message(chat_id, WELCOME_TEXT, kb.main_menu())
+        tg.send_message(chat_id, get_(), kb.main_menu())
         return
 
     if text == "/watchlist":
@@ -89,7 +89,7 @@ def _handle_callback(cq: dict):
 
     try:
         if data == "home":
-            tg.edit_message_text(chat_id, message_id, WELCOME_TEXT, kb.main_menu())
+            tg.edit_message_text(chat_id, message_id, get_(), kb.main_menu())
 
         elif data == "burmenu":
             tg.edit_message_text(chat_id, message_id, "📈 <b>شاخص‌های بورس و جهانی</b>\nیکی از زیردسته‌ها را انتخاب کنید:", kb.bourse_submenu())
@@ -143,7 +143,7 @@ def _handle_callback(cq: dict):
 def _show_list(chat_id, message_id, origin, page):
     keys = kb._resolve_keys(origin)
     if keys is None:
-        tg.edit_message_text(chat_id, message_id, WELCOME_TEXT, kb.main_menu())
+        tg.edit_message_text(chat_id, message_id, get_(), kb.main_menu())
         return
 
     start = page * config.PAGE_SIZE
