@@ -17,6 +17,9 @@ TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
 # نتواند به آدرس وبهوک درخواست جعلی بزند.
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "changeme").strip()
 
+# اضافه کردن یوزرنیم ربات (می‌توانید از متغیر محیطی بخوانید یا مستقیماً یوزرنیم خود را قرار دهید)
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "nerkhemrooz_bot").strip()
+
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # ---------------------------------------------------------------------------
