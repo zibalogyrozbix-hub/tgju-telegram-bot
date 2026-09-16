@@ -104,7 +104,7 @@ def _handle_callback(cq: dict):
                 chat_id, message_id,
                 "🔍 <b>جستجوی پیشرفته</b>\n\nبخشی از نام نماد مورد نظر را تایپ و ارسال کنید "
                 "(مثلا «یورو» یا «بیت‌کوین»)؛ ربات نزدیک‌ترین نتایج را نشان می‌دهد.\n\n"
-                "💡 در هر چت دیگری هم با <code>@your_bot_username نام</code> autofill می‌گیرید.",
+                "💡 در هر چت دیگری هم با <code>@@nerkhemrooz_bot نام</code> autofill می‌گیرید.",
                 {"inline_keyboard": [[{"text": "🏠 منوی اصلی", "callback_data": "home"}]]},
             )
 
@@ -173,7 +173,7 @@ def _show_item(chat_id, message_id, user_id, symbol_key, origin, page):
 
 
 # ---------------------------------------------------------------------------
-# Inline mode (autofill در هر چتی با @your_bot_username عبارت)
+# Inline mode (autofill در هر چتی با @ عبارت)
 # ---------------------------------------------------------------------------
 
 def _handle_inline_query(iq: dict):
