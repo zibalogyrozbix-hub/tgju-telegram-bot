@@ -8,7 +8,7 @@ import os
 from bot import config as tg_config
 
 BALE_BOT_TOKEN = os.environ.get("BALE_BOT_TOKEN", "").strip()
-BALE_WEBHOOK_SECRET = os.environ.get("BALE_WEBHOOK_SECRET", "changeme").strip()
+BALE_WEBHOOK_SECRET = os.environ.get("BALE_WEBHOOK_SECRET", "").strip()
 # یوزرنیم ربات در بله (فقط برای نمایش در متن راهنما استفاده می‌شود)
 BALE_BOT_USERNAME = os.environ.get("BALE_BOT_USERNAME", "").strip()
 
