@@ -22,7 +22,7 @@ def build_digest_text(title: str, emoji: str, symbol_keys: list) -> str:
         lines.append("")
         lines.append(f"🕒 بروزرسانی: {rows[0]['updated_at']}")
     lines.append("")
-    lines.append("📊 نرخ‌های بیشتر: ربات تلگرام @" + shared_config.BOT_USERNAME)
+    lines.append("📊 نرخ‌های بیشتر: ربات بلی و تلگرام @" + shared_config.BOT_USERNAME)
     return "\n".join(lines)
 
 
