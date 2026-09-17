@@ -34,9 +34,21 @@ def handle_update(update: dict):
 # عضویت اجباری در کانال
 # ---------------------------------------------------------------------------
 
-def _check_gate(user_id):
+def _check_gate(user_id, chat_obj=None):
+    """
+    بررسی عضویت اجباری فقط برای چت‌های خصوصی (پیوی).
+    اگر چت از نوع کانال، گروه باشد یا شناسه منفی داشته باشد، بررسی کلاً لغو می‌شود.
+    """
     if not config.REQUIRED_CHANNELS:
         return None
+
+    if chat_obj:
+        chat_type = chat_obj.get("type", "")
+        chat_id = chat_obj.get("id", 0)
+        # اگر چت مربوط به کانال یا گروه است، قفل عضویت اعمال نشود
+        if chat_type in ["channel", "supergroup", "group"] or (isinstance(chat_id, int) and chat_id < 0):
+            return None
+
     missing = membership.get_missing_channels(bale_api, config.REQUIRED_CHANNELS, user_id)
     return missing or None
 
@@ -54,18 +66,19 @@ def _send_gate_message(chat_id, missing_channels):
 # ---------------------------------------------------------------------------
 
 def _handle_message(message: dict):
-    chat_id = message["chat"]["id"]
+    chat = message["chat"]
+    chat_id = chat["id"]
     user_id = message["from"]["id"]
     text = (message.get("text") or "").strip()
 
     if text in ("/start", "/help"):
         bale_api.send_message(chat_id, get_welcome_text(), kb.main_menu())
-        missing = _check_gate(user_id)
+        missing = _check_gate(user_id, chat)
         if missing:
             _send_gate_message(chat_id, missing)
         return
 
-    missing = _check_gate(user_id)
+    missing = _check_gate(user_id, chat)
     if missing:
         _send_gate_message(chat_id, missing)
         return
@@ -102,14 +115,15 @@ def _send_watchlist(chat_id, user_id):
 
 def _handle_callback(cq: dict):
     data = cq.get("data", "")
-    chat_id = cq["message"]["chat"]["id"]
+    chat = cq["message"]["chat"]
+    chat_id = chat["id"]
     message_id = cq["message"]["message_id"]
     user_id = cq["from"]["id"]
     cq_id = cq["id"]
 
     try:
         if data == "check_membership":
-            missing = _check_gate(user_id)
+            missing = _check_gate(user_id, chat)
             if missing:
                 names = "، ".join(ch["title"] for ch in missing)
                 bale_api.answer_callback_query(cq_id, f"هنوز عضو این کانال(ها) نشده‌اید: {names}", show_alert=True)
@@ -122,7 +136,7 @@ def _handle_callback(cq: dict):
             )
             return
 
-        missing = _check_gate(user_id)
+        missing = _check_gate(user_id, chat)
         if missing:
             bale_api.answer_callback_query(cq_id, "🔒 لطفاً ابتدا عضو کانال(های) لازم شوید.", show_alert=True)
             _send_gate_message(chat_id, missing)
