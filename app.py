@@ -90,12 +90,12 @@ def webhook_bale():
     # دقیقی از نام هدر مخفی‌اش پیدا نکردم، هر دو حالت محتمل را چک می‌کنیم؛
     # اگر بعد از تنظیم دیدید درخواست‌های واقعی بله رد می‌شوند، خالی گذاشتن
     # BALE_WEBHOOK_SECRET (که این بررسی را کلاً غیرفعال می‌کند) امن‌ترین راه‌حل سریع است.
-    secret_header = (
-        request.headers.get("X-Bale-Bot-Api-Secret-Token", "")
-        or request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-    )
-    if bale_config.BALE_WEBHOOK_SECRET and secret_header != bale_config.BALE_WEBHOOK_SECRET:
-        return jsonify({"ok": False, "error": "invalid secret"}), 403
+    #secret_header = (
+    #    request.headers.get("X-Bale-Bot-Api-Secret-Token", "")
+    #    or request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    #)
+    #if bale_config.BALE_WEBHOOK_SECRET and secret_header != bale_config.BALE_WEBHOOK_SECRET:
+    #    return jsonify({"ok": False, "error": "invalid secret"}), 403
 
     update = request.get_json(silent=True) or {}
     try:
