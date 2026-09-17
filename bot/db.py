@@ -13,11 +13,10 @@ from . import config
 _conn = None
 
 
-def get_conn():
-    """اتصال به Turso را یک‌بار می‌سازد و در فراخوانی‌های بعدی (در همان
-    اجرای serverless function) دوباره استفاده می‌کند."""
+def get_conn(force_new=False):
+    """اتصال به Turso را می‌سازد و در صورت لزوم نوسازی می‌کند."""
     global _conn
-    if _conn is not None:
+    if _conn is not None and not force_new:
         return _conn
 
     url = config.TURSO_DATABASE_URL
@@ -29,6 +28,28 @@ def get_conn():
     _conn = libsql.connect(database=url, auth_token=config.TURSO_AUTH_TOKEN)
     _ensure_watchlist_table(_conn)
     return _conn
+
+
+def _safe_execute(query: str, params=(), is_commit=False):
+    """اجرای امن دستورات SQL با پشتیبانی از Auto-Reconnect در صورت انقضای Stream"""
+    global _conn
+    try:
+        conn = get_conn()
+        cur = conn.execute(query, params)
+        if is_commit:
+            conn.commit()
+        return cur
+    except Exception as e:
+        err_msg = str(e).lower()
+        if "stream not found" in err_msg or "expired" in err_msg or "closed" in err_msg:
+            # ریست کردن اتصال و تلاش مجدد
+            _conn = None
+            conn = get_conn(force_new=True)
+            cur = conn.execute(query, params)
+            if is_commit:
+                conn.commit()
+            return cur
+        raise e
 
 
 def _ensure_watchlist_table(conn):
@@ -55,8 +76,7 @@ def _row_to_dict(row):
 
 
 def get_item(symbol_key: str):
-    conn = get_conn()
-    cur = conn.execute(
+    cur = _safe_execute(
         "SELECT symbol_key, title_fa, price, change_amount, change_percent, updated_at "
         "FROM market_prices WHERE symbol_key = ?",
         (symbol_key,),
@@ -66,13 +86,11 @@ def get_item(symbol_key: str):
 
 
 def get_items(symbol_keys):
-    """چند نماد را می‌خواند و دقیقا به همان ترتیب symbol_keys برمی‌گرداند
-    (SQL با IN ترتیب را حفظ نمی‌کند، پس این‌جا دوباره مرتب می‌شود)."""
+    """چند نماد را می‌خواند و دقیقا به همان ترتیب symbol_keys برمی‌گرداند."""
     if not symbol_keys:
         return []
-    conn = get_conn()
     placeholders = ",".join("?" for _ in symbol_keys)
-    cur = conn.execute(
+    cur = _safe_execute(
         f"SELECT symbol_key, title_fa, price, change_amount, change_percent, updated_at "
         f"FROM market_prices WHERE symbol_key IN ({placeholders})",
         tuple(symbol_keys),
@@ -82,9 +100,8 @@ def get_items(symbol_keys):
 
 
 def search_items(query: str, limit: int = 15):
-    conn = get_conn()
     like = f"%{query.strip()}%"
-    cur = conn.execute(
+    cur = _safe_execute(
         "SELECT symbol_key, title_fa, price, change_amount, change_percent, updated_at "
         "FROM market_prices WHERE title_fa LIKE ? ORDER BY title_fa LIMIT ?",
         (like, limit),
@@ -97,28 +114,25 @@ def search_items(query: str, limit: int = 15):
 # ---------------------------------------------------------------------------
 
 def add_to_watchlist(user_id: int, symbol_key: str):
-    conn = get_conn()
     now = datetime.now(timezone.utc).isoformat()
-    conn.execute(
+    _safe_execute(
         "INSERT INTO watchlist (user_id, symbol_key, added_at) VALUES (?, ?, ?) "
         "ON CONFLICT(user_id, symbol_key) DO NOTHING",
         (user_id, symbol_key, now),
+        is_commit=True,
     )
-    conn.commit()
 
 
 def remove_from_watchlist(user_id: int, symbol_key: str):
-    conn = get_conn()
-    conn.execute(
+    _safe_execute(
         "DELETE FROM watchlist WHERE user_id = ? AND symbol_key = ?",
         (user_id, symbol_key),
+        is_commit=True,
     )
-    conn.commit()
 
 
 def is_in_watchlist(user_id: int, symbol_key: str) -> bool:
-    conn = get_conn()
-    cur = conn.execute(
+    cur = _safe_execute(
         "SELECT 1 FROM watchlist WHERE user_id = ? AND symbol_key = ?",
         (user_id, symbol_key),
     )
@@ -126,8 +140,7 @@ def is_in_watchlist(user_id: int, symbol_key: str) -> bool:
 
 
 def get_watchlist_keys(user_id: int):
-    conn = get_conn()
-    cur = conn.execute(
+    cur = _safe_execute(
         "SELECT symbol_key FROM watchlist WHERE user_id = ? ORDER BY added_at",
         (user_id,),
     )
