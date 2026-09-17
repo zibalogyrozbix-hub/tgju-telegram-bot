@@ -12,7 +12,8 @@ BALE_WEBHOOK_SECRET = os.environ.get("BALE_WEBHOOK_SECRET", "").strip()
 # یوزرنیم ربات در بله (فقط برای نمایش در متن راهنما استفاده می‌شود)
 BALE_BOT_USERNAME = os.environ.get("BALE_BOT_USERNAME", "").strip()
 
-BALE_API = f"https://tapi.bale.ir/bot{BALE_BOT_TOKEN}"
+#BALE_API = f"https://tapi.bale.ir/bot{BALE_BOT_TOKEN}"
+BALE_API = f"https://tapi.bale.ai/bot{BALE_BOT_TOKEN}"
 
 # دسته‌بندی‌ها را از پروژه تلگرام «قرض» می‌گیریم (منبع واحد حقیقت):
 CATEGORIES = tg_config.CATEGORIES
