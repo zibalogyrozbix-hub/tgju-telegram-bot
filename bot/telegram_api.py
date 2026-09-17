@@ -67,5 +67,20 @@ def answer_inline_query(inline_query_id, results, cache_time=15):
     return _call("answerInlineQuery", payload)
 
 
+def get_chat_member(chat_id, user_id):
+    """برای بررسی عضویت کاربر در یک کانال/گروه استفاده می‌شود. نکته: ربات
+    باید خودش عضو (ترجیحاً ادمین) همان چت باشد وگرنه تلگرام خطا می‌دهد."""
+    return _call("getChatMember", {"chat_id": chat_id, "user_id": user_id})
+
+
+def get_chat_member_status(chat_id, user_id):
+    """فقط رشتهٔ status را برمی‌گرداند (مثلا 'member', 'left', 'kicked') یا
+    None اگر خطایی رخ داد (مثلا ربات ادمین کانال نیست)."""
+    result = get_chat_member(chat_id, user_id)
+    if result and result.get("ok"):
+        return result.get("result", {}).get("status")
+    return None
+
+
 def set_my_commands(commands):
     return _call("setMyCommands", {"commands": commands})

@@ -6,10 +6,10 @@
 اجرا:
     export TELEGRAM_BOT_TOKEN="..."      # از BotFather
     export WEBHOOK_SECRET="یک-رشته-دلخواه-و-تصادفی"
-    python set_webhook.py https://<یوزرنیم‌شما>.pythonanywhere.com/webhook
+    python set_webhook.py https://<نام‌پروژه‌شما>.up.railway.app/webhook
 
-نکته: همین WEBHOOK_SECRET باید داخل فایل .env که روی خود PythonAnywhere
-ساختید هم دقیقا همین مقدار را داشته باشد.
+نکته: همین WEBHOOK_SECRET باید در تب Variables پروژه‌تان روی Railway هم
+دقیقا همین مقدار را داشته باشد.
 """
 import os
 import sys
@@ -23,7 +23,7 @@ if not TOKEN:
     sys.exit(1)
 
 if len(sys.argv) < 2:
-    print("استفاده: python set_webhook.py https://<یوزرنیم‌شما>.pythonanywhere.com/webhook")
+    print("استفاده: python set_webhook.py https://<نام‌پروژه‌شما>.up.railway.app/webhook")
     sys.exit(1)
 
 webhook_url = sys.argv[1]

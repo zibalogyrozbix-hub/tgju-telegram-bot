@@ -3,16 +3,9 @@
 inline query برای autofill)."""
 import uuid
 
-from . import config, db, format as fmt, keyboards as kb
+from . import config, db, format as fmt, keyboards as kb, membership
 from . import telegram_api as tg
 
-#WELCOME_TEXT = (
-#    "👋 به <b>ربات نرخ امروز چند؟</b> خوش آمدید!\n\n"
-#    "از منوی زیر یکی از دسته‌ها را انتخاب کنید، یا برای جستجوی سریع کافی‌ست "
-#    "بخشی از نام یک نماد (مثلا «دلار» یا «سکه») را همین‌جا تایپ کنید.\n\n"
-#    "💡 در هر چت دیگری هم می‌توانید با نوشتن "
-#    "<code>@your_bot_username نام نماد</code> به‌صورت آنی پیشنهاد بگیرید."
-#)
 
 def get_welcome_text():
     return (
@@ -34,19 +27,50 @@ def handle_update(update: dict):
 
 
 # ---------------------------------------------------------------------------
+# عضویت اجباری در کانال (join gate)
+# ---------------------------------------------------------------------------
+
+def _check_gate(user_id):
+    """اگر کاربر عضو همهٔ کانال‌های اجباری بود None برمی‌گرداند (یعنی اجازه
+    عبور دارد)، وگرنه لیست کانال‌های ناقص را برمی‌گرداند."""
+    if not config.REQUIRED_CHANNELS:
+        return None
+    missing = membership.get_missing_channels(tg, config.REQUIRED_CHANNELS, user_id)
+    return missing or None
+
+
+def _send_gate_message(chat_id, missing_channels):
+    tg.send_message(
+        chat_id,
+        membership.build_join_message(missing_channels),
+        membership.build_join_keyboard(missing_channels),
+    )
+
+
+# ---------------------------------------------------------------------------
 # پیام‌های معمولی (دستورها + جستجوی متنی)
 # ---------------------------------------------------------------------------
 
 def _handle_message(message: dict):
     chat_id = message["chat"]["id"]
+    user_id = message["from"]["id"]
     text = (message.get("text") or "").strip()
 
     if text in ("/start", "/help"):
-        tg.send_message(chat_id, get_(), kb.main_menu())
+        tg.send_message(chat_id, get_welcome_text(), kb.main_menu())
+        missing = _check_gate(user_id)
+        if missing:
+            _send_gate_message(chat_id, missing)
+        return
+
+    # از اینجا به بعد، برای هر دستور/پیام دیگر ابتدا عضویت را چک می‌کنیم
+    missing = _check_gate(user_id)
+    if missing:
+        _send_gate_message(chat_id, missing)
         return
 
     if text == "/watchlist":
-        _send_watchlist(chat_id, message["from"]["id"])
+        _send_watchlist(chat_id, user_id)
         return
 
     if not text or text.startswith("/"):
@@ -88,8 +112,34 @@ def _handle_callback(cq: dict):
     cq_id = cq["id"]
 
     try:
+        # دکمهٔ «✅ عضو شدم» همیشه قابل کلیک است (خودش عضویت را می‌سنجد)
+        if data == "check_membership":
+            missing = _check_gate(user_id)
+            if missing:
+                names = "، ".join(ch["title"] for ch in missing)
+                tg.answer_callback_query(
+                    cq_id,
+                    f"هنوز عضو این کانال(ها) نشده‌اید: {names}",
+                    show_alert=True,
+                )
+                return
+            tg.answer_callback_query(cq_id, "🎉 عضویت شما تایید شد!")
+            tg.edit_message_text(
+                chat_id, message_id,
+                "🎉 عضویت شما تایید شد! حالا می‌توانید از ربات استفاده کنید.\n\n" + get_welcome_text(),
+                kb.main_menu(),
+            )
+            return
+
+        # برای بقیهٔ دکمه‌ها، اول عضویت را چک می‌کنیم
+        missing = _check_gate(user_id)
+        if missing:
+            tg.answer_callback_query(cq_id, "🔒 لطفاً ابتدا عضو کانال(های) لازم شوید.", show_alert=True)
+            _send_gate_message(chat_id, missing)
+            return
+
         if data == "home":
-            tg.edit_message_text(chat_id, message_id, get_(), kb.main_menu())
+            tg.edit_message_text(chat_id, message_id, get_welcome_text(), kb.main_menu())
 
         elif data == "burmenu":
             tg.edit_message_text(chat_id, message_id, "📈 <b>شاخص‌های بورس و جهانی</b>\nیکی از زیردسته‌ها را انتخاب کنید:", kb.bourse_submenu())
@@ -104,7 +154,7 @@ def _handle_callback(cq: dict):
                 chat_id, message_id,
                 "🔍 <b>جستجوی پیشرفته</b>\n\nبخشی از نام نماد مورد نظر را تایپ و ارسال کنید "
                 "(مثلا «یورو» یا «بیت‌کوین»)؛ ربات نزدیک‌ترین نتایج را نشان می‌دهد.\n\n"
-                "💡 در هر چت دیگری هم با <code>@@nerkhemrooz_bot نام</code> autofill می‌گیرید.",
+                f"💡 در هر چت دیگری هم با <code>@{config.BOT_USERNAME} نام</code> autofill می‌گیرید.",
                 {"inline_keyboard": [[{"text": "🏠 منوی اصلی", "callback_data": "home"}]]},
             )
 
@@ -143,7 +193,7 @@ def _handle_callback(cq: dict):
 def _show_list(chat_id, message_id, origin, page):
     keys = kb._resolve_keys(origin)
     if keys is None:
-        tg.edit_message_text(chat_id, message_id, get_(), kb.main_menu())
+        tg.edit_message_text(chat_id, message_id, get_welcome_text(), kb.main_menu())
         return
 
     start = page * config.PAGE_SIZE
@@ -175,6 +225,10 @@ def _show_item(chat_id, message_id, user_id, symbol_key, origin, page):
 # ---------------------------------------------------------------------------
 # Inline mode (autofill در هر چتی با @ عبارت)
 # ---------------------------------------------------------------------------
+# توجه: عمداً اینجا هیچ gate عضویتی اعمال نشده. تلگرام هیچ راهی برای
+# نمایش پیام «باید عضو شوید» داخل نتایج inline در اختیار نمی‌گذارد، و اگر
+# نتیجه‌ای برنگردانیم، کاربر فقط یک لیست خالی می‌بیند (گیج‌کننده). محدودیت
+# واقعی همان جایی اعمال می‌شود که کاربر وارد چت خود ربات می‌شود.
 
 def _handle_inline_query(iq: dict):
     query = (iq.get("query") or "").strip()
