@@ -24,10 +24,17 @@ def get_welcome_text():
 
 def handle_update(update: dict):
     if "message" in update:
-        _handle_message(update["message"])
+        msg = update["message"]
+        chat = msg.get("chat", {})
+        chat_type = chat.get("type", "private")
+        
+        # اگر پیام از طرف کانال یا سوپرگروه باشد، کلاً نادیده گرفته می‌شود
+        if chat_type in ["channel", "supergroup"]:
+            return
+            
+        _handle_message(msg)
     elif "callback_query" in update:
         _handle_callback(update["callback_query"])
-    # بله inline_query ندارد؛ اگر هم در آپدیت بیاید، نادیده گرفته می‌شود.
 
 
 # ---------------------------------------------------------------------------
@@ -68,8 +75,13 @@ def _send_gate_message(chat_id, missing_channels):
 def _handle_message(message: dict):
     chat = message["chat"]
     chat_id = chat["id"]
+    chat_type = chat.get("type", "private")
     user_id = message["from"]["id"]
     text = (message.get("text") or "").strip()
+
+    # اگر پیام از چت خصوصی (پیوی) نباشد، هیچ پاسخی ارسال نشود
+    if chat_type != "private":
+        return
 
     if text in ("/start", "/help"):
         bale_api.send_message(chat_id, get_welcome_text(), kb.main_menu())
